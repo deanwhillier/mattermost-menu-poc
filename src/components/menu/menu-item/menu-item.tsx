@@ -133,16 +133,14 @@ const MenuItemComponent: React.FC<Props> = (props) => {
     const {children, menuPanelID, iconGlyph, ...rest} = props;
 
     const menuContext = useContext(MenuContext);
-    const menuPanelContext = useContext(MenuPanelContext);
+    const parentMenuPanelContext = useContext(MenuPanelContext);
 
     const handleClickEvent = (event: React.MouseEvent<HTMLButtonElement>) => {
-        if (!menuContext || !menuContext.openMenuPanel) {
+        if (!menuPanelID || !menuContext || !parentMenuPanelContext) {
             return;
         }
         event.stopPropagation();
-        if (menuPanelContext?.menuPanelID && menuPanelID) {
-            menuContext.openMenuPanel(menuPanelContext.menuPanelID, menuPanelID);
-        }
+        menuContext.openMenuPanel(parentMenuPanelContext.menuPanelID, menuPanelID);
     };
 
     return (

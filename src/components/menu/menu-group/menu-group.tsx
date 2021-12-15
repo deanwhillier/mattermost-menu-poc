@@ -3,36 +3,34 @@ import styled, {css} from 'styled-components';
 
 import {resetList} from '../../../utils/css';
 
-const MenuGroup = styled.li(() => {
-    return css`
-        ${resetList()}
+const MenuGroup = styled.li`
+    ${resetList()}
 
-        display: flex;
-        flex-direction: column;
+    display: flex;
+    flex-direction: column;
 
+    & + & {
+        &::before {
+            content: '';
+            height: 1px;
+            background: rgba(var(--black-rgb), 0.16);
+        }
+    }
+    @media (max-width: 899px) {
         & + & {
             &::before {
-                content: '';
-                height: 1px;
-                background: rgba(var(--black-rgb), 0.16);
+                margin: 8px 20px;
             }
         }
-        @media (max-width: 899px) {
-            & + & {
-                &::before {
-                    margin: 8px 20px;
-                }
+    }
+    @media (min-width: 900px) {
+        & + & {
+            &::before {
+                margin: 8px 0;
             }
         }
-        @media (min-width: 900px) {
-            & + & {
-                &::before {
-                    margin: 8px 0;
-                }
-            }
-        }
-    `;
-});
+    }
+`;
 
 const MenuGroupWrapper = styled.ul(() => {
     return css`
