@@ -37,6 +37,7 @@ const MenuPanels = styled.div(() => {
         @media (min-width: 900px) {
             flex-direction: row;
             align-items: flex-start;
+            max-height: 100%;
 
             & + & {
                 margin-inline-start: -3px;
@@ -143,7 +144,7 @@ const MenuComponent: React.FC<Props> = (props) => {
 
     // state to manage primary menu rendering/visibility
     const [containerShouldRender, setContainerShouldRender] = useState(false);
-    const [menuIsVisible, setMenuIsVisible] = useState(false);
+    const [menuIsOpen, setMenuIsOpen] = useState(false);
 
     // state to store filtered menu panel components and ids
     const [menuPanels, setMenuPanels] = useState<React.ReactNode[]>([]);
@@ -163,7 +164,7 @@ const MenuComponent: React.FC<Props> = (props) => {
             setContainerShouldRender(true);
         }
         window.requestAnimationFrame(() => {
-            setMenuIsVisible(open);
+            setMenuIsOpen(open);
         });
     }, [open]);
 
@@ -180,6 +181,10 @@ const MenuComponent: React.FC<Props> = (props) => {
         const filteredPanels = filterChildren(children);
         const filteredPanelIDs = filteredPanels.map((panel) => (panel as React.ReactElement).props.id);
 
+        // update menu state
+        setMenuPanels(filteredPanels);
+        setMenuPanelIDs(filteredPanelIDs);
+
         // is the primary (first) menu panel unchanged?
         const primaryPanelIsDifferent = menuPanelIDs[0] !== filteredPanelIDs[0];
 
@@ -187,13 +192,8 @@ const MenuComponent: React.FC<Props> = (props) => {
         const panelsHaveBeenOrphaned =
             menuPanels.filter((panel) => !filteredPanelIDs.includes((panel as React.ReactElement).props.id)).length > 0;
 
-        // update menu state
-        setMenuPanels(filteredPanels);
-        setMenuPanelIDs(filteredPanelIDs);
-
         // reset menu panel rendering state if menu structure has changed
         if (primaryPanelIsDifferent || panelsHaveBeenOrphaned) {
-            console.log('[DEBUG] children updates', {primaryPanelIsDifferent, panelsHaveBeenOrphaned});
             resetMenu(filteredPanelIDs[0]);
         }
     }, [children]); /* eslint-disable-line react-hooks/exhaustive-deps */
@@ -204,25 +204,20 @@ const MenuComponent: React.FC<Props> = (props) => {
             setMenuPanelStack(menuPanels);
             return;
         }
-        const initializingPanels = initializingPanelIDs.map((panelID) =>
-            cloneMenuPanel(menuPanels[menuPanelIDs.indexOf(panelID)] as React.ReactElement, true, false, false, false)
-        );
-        const openPanels = openPanelIDs.map((panelID, index) =>
-            cloneMenuPanel(
+        console.log('[DEBUG] state update', {openPanelIDs, initializingPanelIDs, closingPanelIDs});
+        const openPanels = openPanelIDs.map((panelID, index) => {
+            const activePanelID = openPanelIDs
+                .filter((panelID) => ![...initializingPanelIDs, ...closingPanelIDs].includes(panelID))
+                .pop();
+            return cloneMenuPanel(
                 menuPanels[menuPanelIDs.indexOf(panelID)] as React.ReactElement,
-                false,
+                initializingPanelIDs.includes(panelID),
                 true,
-                index === openPanelIDs.length - 1,
-                false
-            )
-        );
-        const closingPanels = closingPanelIDs.map((panelID) =>
-            cloneMenuPanel(menuPanels[menuPanelIDs.indexOf(panelID)] as React.ReactElement, false, false, false, true)
-        );
-        const combinedPanelIDs = [...openPanelIDs, ...initializingPanelIDs, ...closingPanelIDs];
-        const closedPanels = menuPanels.filter((_, index) => !combinedPanelIDs.includes(menuPanelIDs[index]));
-        console.log('[DEBUG] update stack', {initializingPanels, openPanels, closingPanels, closedPanels});
-        setMenuPanelStack([...openPanels, ...closingPanels, ...initializingPanels, ...closedPanels]);
+                panelID === activePanelID,
+                closingPanelIDs.includes(panelID)
+            );
+        });
+        setMenuPanelStack([...openPanels]);
     }, [menuPanels, menuPanelIDs, openPanelIDs, initializingPanelIDs, closingPanelIDs]);
 
     // helper functions
@@ -240,9 +235,9 @@ const MenuComponent: React.FC<Props> = (props) => {
     }
 
     function resetMenu(primaryMenuPanelID: string) {
-        setClosingPanelIDs([]);
         setInitializingPanelIDs([]);
         setOpenPanelIDs([primaryMenuPanelID]);
+        setClosingPanelIDs([]);
     }
 
     function cloneMenuPanel(
@@ -253,7 +248,7 @@ const MenuComponent: React.FC<Props> = (props) => {
         closing = false
     ): React.ReactElement {
         return React.cloneElement(menuPanel, {
-            key: menuPanel.props.id + (closing ? '_closing' : ''),
+            key: menuPanel.props.id,
             initializing,
             open,
             active,
@@ -277,44 +272,37 @@ const MenuComponent: React.FC<Props> = (props) => {
 
     // context handlers
     const openMenuPanel = (parentMenuPanelID: string, menuPanelID: string) => {
-        if ([...openPanelIDs, ...initializingPanelIDs].includes(menuPanelID)) {
+        if (openPanelIDs.includes(menuPanelID)) {
+            setClosingPanelIDs([...closingPanelIDs, ...openPanelIDs.slice(openPanelIDs.indexOf(menuPanelID) + 1)]);
             return;
         }
         console.log('[DEBUG] openMenuPanel', {parentMenuPanelID, menuPanelID});
-        // mark new panel as initializing
-        setInitializingPanelIDs([...initializingPanelIDs, menuPanelID]); // should prevent duplicates
-        // new panel replaces all following panels
-        if (openPanelIDs.includes(parentMenuPanelID)) {
-            const parentPanelIndex = openPanelIDs.indexOf(parentMenuPanelID);
-            setOpenPanelIDs(openPanelIDs.slice(0, parentPanelIndex + 1));
-            // mark orphaned panels as closing
-            setClosingPanelIDs([...closingPanelIDs, ...openPanelIDs.slice(parentPanelIndex + 1)]); // should prevent duplicates
-        }
+        setOpenPanelIDs([...openPanelIDs, menuPanelID]);
+        setInitializingPanelIDs([...initializingPanelIDs, menuPanelID]);
+        setClosingPanelIDs([...closingPanelIDs, ...openPanelIDs.slice(openPanelIDs.indexOf(parentMenuPanelID) + 1)]);
     };
     const closeMenuPanel = (menuPanelID: string) => {
         if (!openPanelIDs.includes(menuPanelID)) {
             return;
         }
         console.log('[DEBUG] closeMenuPanel', {menuPanelID});
-        setOpenPanelIDs(openPanelIDs.filter((panelID) => panelID !== menuPanelID));
-        setClosingPanelIDs([...closingPanelIDs, menuPanelID]); // should prevent duplicates
+        setClosingPanelIDs([...closingPanelIDs, ...openPanelIDs.slice(openPanelIDs.indexOf(menuPanelID))]);
     };
 
     const menuPanelInitialized = (menuPanelID: string) => {
         if (!initializingPanelIDs.includes(menuPanelID)) {
             return;
         }
-        console.log('[DEBUG] menuPanelOpened', {menuPanelID});
+        console.log('[DEBUG] menuPanelInitialized', {menuPanelID});
         setInitializingPanelIDs(initializingPanelIDs.filter((panelID) => panelID !== menuPanelID));
-        setOpenPanelIDs([...openPanelIDs, menuPanelID]);
     };
     const menuPanelClosed = (menuPanelID: string) => {
-        console.log('[DEBUG] menuPanelClosed', {menuPanelID, closingPanelIDs});
         if (!closingPanelIDs.includes(menuPanelID)) {
             return;
         }
         console.log('[DEBUG] menuPanelClosed', {menuPanelID});
-        setClosingPanelIDs(closingPanelIDs.filter((panelID) => panelID !== menuPanelID));
+        setOpenPanelIDs([...openPanelIDs.filter((panelID) => panelID !== menuPanelID)]);
+        setClosingPanelIDs([...closingPanelIDs.filter((panelID) => panelID !== menuPanelID)]);
     };
 
     const menuContext: MenuContextType = {
@@ -326,7 +314,7 @@ const MenuComponent: React.FC<Props> = (props) => {
     };
 
     return true ? (
-        <Menu open={menuIsVisible} onClick={handleOnClickEvent}>
+        <Menu open={menuIsOpen} onClick={handleOnClickEvent}>
             <MenuContext.Provider value={menuContext}>
                 <MenuPanels onTransitionEnd={handleOnTransitionEnd}>{menuPanelStack}</MenuPanels>
             </MenuContext.Provider>

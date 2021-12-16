@@ -47,7 +47,7 @@ function App() {
                     </MenuGroup>
                 </MenuPanel>
                 <MenuPanel id='Menu_UXDesign_MoveTo'>
-                    <MenuHeader>Move To</MenuHeader>
+                    <MenuHeader enableBackButton={true}>Move To</MenuHeader>
                     <MenuGroup>
                         <MenuItem iconGlyph='icon-star-outline'>Favorites</MenuItem>
                         <MenuItem iconGlyph='icon-folder-outline'>Active Projects</MenuItem>
@@ -77,7 +77,7 @@ function App() {
                     </MenuGroup>
                 </MenuPanel>
                 <MenuPanel id='Menu_UXDesign_MoveTo_AnotherSubMenu'>
-                    <MenuHeader>Another Sub Menu</MenuHeader>
+                    <MenuHeader enableBackButton={true}>Another Sub Menu</MenuHeader>
                     <MenuGroup>
                         <MenuItem iconGlyph='icon-folder-outline'>Menu Item</MenuItem>
                         <MenuItem iconGlyph='icon-folder-outline'>Menu Item</MenuItem>
@@ -103,7 +103,7 @@ function App() {
                     </MenuGroup>
                 </MenuPanel>
                 <MenuPanel id='Menu_UXDesign_MoveTo_YetAnotherSubMenu'>
-                    <MenuHeader>Yet Another Sub Menu</MenuHeader>
+                    <MenuHeader enableBackButton={true}>Yet Another Sub Menu</MenuHeader>
                     <MenuGroup>
                         <MenuItem iconGlyph='icon-folder-outline'>Menu Item 2</MenuItem>
                         <MenuItem iconGlyph='icon-folder-outline'>Menu Item 2</MenuItem>

@@ -1,7 +1,11 @@
+import {useContext} from 'react';
 import styled from 'styled-components';
 
 import IconButton from '../../icon-button';
 import Heading from '../../heading';
+
+import {MenuContext} from '../menu';
+import {MenuPanelContext} from '../menu-panel';
 
 import {resetList} from '../../../utils/css';
 
@@ -61,15 +65,20 @@ const MenuHeader = styled.li`
 export type Props = {
     enableBackButton?: boolean;
     leftButtonGlyph?: string;
-    onClose?: () => void;
 };
 
 const MenuHeaderComponent: React.FC<Props> = (props) => {
-    const {children, enableBackButton = false, onClose} = props;
+    const {children, enableBackButton = false} = props;
+
+    const menuContext = useContext(MenuContext);
+    const parentMenuPanelContext = useContext(MenuPanelContext);
 
     const handleClickEvent = (event: React.MouseEvent<HTMLElement>) => {
+        if (!menuContext || !parentMenuPanelContext) {
+            return;
+        }
         event.stopPropagation();
-        onClose?.();
+        menuContext.closeMenuPanel(parentMenuPanelContext.menuPanelID);
     };
 
     return (

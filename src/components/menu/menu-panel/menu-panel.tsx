@@ -1,5 +1,5 @@
 import React, {useContext, useState, useEffect, useRef, TransitionEvent} from 'react';
-import styled from 'styled-components';
+import styled, {css} from 'styled-components';
 
 import {MenuContext} from '../menu';
 
@@ -13,23 +13,21 @@ export const MenuPanelContext = React.createContext<MenuPanelContextType | null>
 
 export type Props = {
     id: string;
-    initializing?: boolean;
     open?: boolean;
+    initializing?: boolean;
     closing?: boolean;
     active?: boolean;
-    visible?: boolean;
 };
 
-const MenuPanel = styled.ul
+/* const MenuPanelOld = styled.ul
     .withConfig<Props>({
-        shouldForwardProp: exclude(['initializing', 'open', 'closing', 'active', 'visible']),
+        shouldForwardProp: exclude(['open', 'initializing', 'closing', 'active']),
     })
     .attrs((props: Props) => ({
         'data-initializing': props.initializing === true || null,
         'data-open': props.open === true || null,
         'data-closing': props.closing === true || null,
         'data-active': props.active === true || null,
-        'data-visible': props.active === true || null,
     }))`
         ${resetList()}
 
@@ -112,57 +110,175 @@ const MenuPanel = styled.ul
                     visibility var(--animation-speed-shortest) 0ms step-start;
             }
         }
+    `; */
+
+const MenuPanel = styled.ul
+    .withConfig<Props>({
+        shouldForwardProp: exclude(['open', 'initializing', 'closing', 'active']),
+    })
+    .attrs((props: Props) => ({
+        'data-open': props.open === true || null,
+        'data-initializing': props.initializing === true || null,
+        'data-closing': props.closing === true || null,
+        'data-active': props.active === true || null,
+    }))((props: Props) => {
+    return css`
+        ${resetList()}
+
+        display: flex;
+        flex-direction: column;
+        min-width: 114px;
+        background: white;
+
+        @media (max-width: 899px) {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            padding: 12px 0;
+            width: 100%;
+            max-height: 100%;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0px 6px 14px rgba(0, 0, 0, 0.12);
+            overflow-y: auto;
+
+            will-change: transform, visibility;
+
+            // panel initial/final visibility and position
+            &,
+            &[data-initializing='true'],
+            &[data-closing='true'] {
+                visibility: hidden;
+                z-index: 1;
+                transform: translateX(100%);
+
+                transition: transform var(--animation-speed-normal) 0ms ease-in-out,
+                    visibility var(--animation-speed-normal) 0ms step-end;
+            }
+
+            // panel position when fully open
+            &[data-open='true']:not([data-initializing='true']):not([data-closing='true']):not([data-active='true']) {
+                visibility: hidden;
+                z-index: 1;
+                transform: translateX(-100%);
+
+                transition: transform var(--animation-speed-normal) 0ms ease-in-out,
+                    visibility var(--animation-speed-normal) 0ms step-end;
+            }
+
+            // panel position when active
+            &[data-open='true'][data-active='true'] {
+                visibility: visible;
+                z-index: 2;
+                transform: translateX(0%);
+
+                transition: transform var(--animation-speed-normal) 0ms ease-in-out,
+                    visibility var(--animation-speed-normal) 0ms step-start;
+            }
+        }
+
+        @media (min-width: 900px) {
+            position: relative;
+            padding: 8px 0;
+            max-width: 496px;
+            max-height: 100%;
+            border-radius: 4px;
+            box-shadow: 0px 0px 1px 1px rgba(var(--black-rgb), 0.16), 0px 6px 14px rgba(0, 0, 0, 0.12);
+            overflow-y: hidden;
+
+            // overlap sibling panels
+            & + & {
+                margin-inline-start: -3px;
+            }
+
+            // panel initial/final visibility and position
+            &,
+            &[data-initializing='true'],
+            &[data-closing='true'] {
+                opacity: 0;
+                visibility: hidden;
+                transform: translateX(-8px);
+
+                will-change: transform, opacity, visibility;
+                transition: transform var(--animation-speed-shortest) 0ms ease-in-out,
+                    opacity var(--animation-speed-shortest) 0ms ease-in-out,
+                    visibility var(--animation-speed-shortest) 0ms step-end;
+            }
+
+            // panel position when fully open
+            &[data-open='true']:not([data-initializing='true']):not([data-closing='true']) {
+                opacity: 1;
+                visibility: visible;
+                transform: translateX(0px);
+
+                transition: transform var(--animation-speed-shortest) 0ms ease-in-out,
+                    opacity var(--animation-speed-shortest) 0ms ease-in-out,
+                    visibility var(--animation-speed-shortest) 0ms step-start;
+            }
+
+            // allow vertical scrolling when panel is active
+            &[data-open='true'][data-active='true'] {
+                overflow-y: auto;
+            }
+
+            // when opening a new panel and closing this one, delay the incoming animation of the new panel
+            // - better aesthetic
+            // - prevents menu potition popping
+            &[data-open='true'][data-closing='true'] + [data-open='true'][data-active='true'] {
+                transition: transform var(--animation-speed-shortest) var(--animation-speed-shorter) ease-in-out,
+                    opacity var(--animation-speed-shortest) var(--animation-speed-shorter) ease-in-out,
+                    visibility var(--animation-speed-shortest) var(--animation-speed-shorter) step-start;
+            }
+        }
     `;
+});
 
 const MenuPanelComponent: React.FC<Props> = (props) => {
     const {children, id, initializing = false, open = false, active = false, closing = false} = props;
 
-    const panelRef = useRef(null);
+    const panelRef = useRef<HTMLUListElement>(null);
 
     const menuContext = useContext(MenuContext);
 
     const [containerShouldRender, setContainerShouldRender] = useState(open);
-    const [panelIsVisible, setPanelIsVisible] = useState(false);
+    const [panelIsOpen, setPanelIsOpen] = useState(false);
 
-    // tell the menu that the panel is ready
+    // update panel open/close rendering state
     useEffect(() => {
-        if (initializing) {
-            menuContext?.menuPanelInitialized(id);
-        }
-    }, []); /* eslint-disable-line react-hooks/exhaustive-deps */
-
-    useEffect(() => {
-        if (initializing && !containerShouldRender) {
+        if (open && !containerShouldRender) {
             setContainerShouldRender(true);
         }
         window.requestAnimationFrame(() => {
-            setPanelIsVisible(initializing || open || closing);
+            setPanelIsOpen(open);
         });
-    }, [initializing, open, closing]); /* eslint-disable-line react-hooks/exhaustive-deps */
+    }, [open]); /* eslint-disable-line react-hooks/exhaustive-deps */
+
+    // tell the menu that the panel is ready
+    useEffect(() => {
+        if (panelIsOpen && initializing) {
+            menuContext?.menuPanelInitialized(id);
+        }
+    }, [panelIsOpen, initializing]); /* eslint-disable-line react-hooks/exhaustive-deps */
 
     const onTransitionEnd = (event: TransitionEvent<HTMLUListElement>) => {
-        if (event.target === panelRef.current) {
-            console.log('[DEBUG]', {id, property: event.propertyName, initializing, open, closing, event});
-        }
-        if (!(initializing || open || closing)) {
-            console.log('[DEBUG] HERE!!!');
-            setContainerShouldRender(false);
-        }
-        if (closing) {
-            menuContext?.menuPanelClosed(id);
+        if (event.target === panelRef.current && event.propertyName === 'visibility') {
+            if (closing) {
+                menuContext?.menuPanelClosed(id);
+            }
+            if (!open) {
+                setContainerShouldRender(false);
+            }
         }
     };
 
-    return true ? (
+    return containerShouldRender ? (
         <MenuPanelContext.Provider value={{menuPanelID: id}}>
             <MenuPanel
                 ref={panelRef}
                 id={id}
+                open={panelIsOpen}
                 initializing={initializing}
-                open={open}
                 closing={closing}
                 active={active}
-                visible={panelIsVisible}
                 onTransitionEnd={onTransitionEnd}
             >
                 {children}
