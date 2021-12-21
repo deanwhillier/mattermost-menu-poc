@@ -1,4 +1,4 @@
-import {useContext} from 'react';
+import {useContext, useEffect, useState} from 'react';
 import styled, {css} from 'styled-components';
 
 import Icon from '../../icon';
@@ -132,20 +132,45 @@ const MenuItemActionIcon = styled(Icon)``;
 const MenuItemComponent: React.FC<Props> = (props) => {
     const {children, menuPanelID, iconGlyph, ...rest} = props;
 
-    const menuContext = useContext(MenuContext);
-    const parentMenuPanelContext = useContext(MenuPanelContext);
+    const {openMenuPanel, openMenuPanelIDs, isMobile} = useContext(MenuContext);
+    const {menuPanelID: parentMenuPanelID} = useContext(MenuPanelContext);
 
-    const handleClickEvent = (event: React.MouseEvent<HTMLButtonElement>) => {
-        if (!menuPanelID || !menuContext || !parentMenuPanelContext) {
+    const [selected, setSelected] = useState(false);
+
+    useEffect(() => {
+        if (!openMenuPanelIDs || !menuPanelID) {
+            return;
+        }
+        setSelected(openMenuPanelIDs.includes(menuPanelID));
+    }, [openMenuPanelIDs, menuPanelID]);
+
+    // helper functions
+
+    const menuItemSelected = (event: React.MouseEvent<HTMLButtonElement>) => {
+        if (!menuPanelID || !openMenuPanel || !parentMenuPanelID) {
             return;
         }
         event.stopPropagation();
-        menuContext.openMenuPanel(parentMenuPanelContext.menuPanelID, menuPanelID);
+        openMenuPanel(parentMenuPanelID, menuPanelID);
+    };
+
+    // event handlers
+
+    const handleClickEvent = (event: React.MouseEvent<HTMLButtonElement>) => {
+        if (isMobile) {
+            menuItemSelected(event);
+        }
+    };
+
+    const handleMouseOverEvent = (event: React.MouseEvent<HTMLButtonElement>) => {
+        if (!isMobile) {
+            menuItemSelected(event);
+        }
     };
 
     return (
-        <MenuItem {...rest}>
-            <MenuItemWrapper onClick={handleClickEvent}>
+        <MenuItem active={selected} {...rest}>
+            <MenuItemWrapper onClick={handleClickEvent} onMouseOver={handleMouseOverEvent}>
                 {iconGlyph && <MenuItemIcon glyph={iconGlyph} size='16' />}
                 <Text size={'small'}>{children}</Text>
                 {menuPanelID && <MenuItemActionIcon glyph='icon-chevron-right' size='16' />}

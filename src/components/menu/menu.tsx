@@ -5,14 +5,18 @@ import {resetList} from '../../utils/css';
 import {exclude} from '../../utils/styled-components';
 
 type MenuContextType = {
-    openMenuPanelIDs: React.ReactNode[];
-    openMenuPanel: (parentMenuPanelID: string, menuPanelID: string) => void;
-    closeMenuPanel: (menuPanelID: string) => void;
-    menuPanelInitialized: (menuPanelID: string) => void;
-    menuPanelClosed: (menuPanelID: string) => void;
+    openMenuPanelIDs?: React.ReactNode[];
+    openMenuPanel?: (parentMenuPanelID: string, menuPanelID: string) => void;
+    closeMenuPanel?: (menuPanelID: string) => void;
+    menuPanelInitialized?: (menuPanelID: string) => void;
+    menuPanelClosed?: (menuPanelID: string) => void;
+    isMobile: boolean;
 };
 
-export const MenuContext = React.createContext<MenuContextType | null>(null);
+export const MenuContext = React.createContext<MenuContextType>({isMobile: false});
+
+export const mobileBreakpoint = window.matchMedia('(max-width: 899px)');
+export const desktopBreakpoint = window.matchMedia('(min-width: 900px)');
 
 const MenuPanels = styled.div(() => {
     return css`
@@ -22,7 +26,7 @@ const MenuPanels = styled.div(() => {
         position: absolute;
         pointer-events: none;
 
-        @media (max-width: 899px) {
+        @media ${mobileBreakpoint.media} {
             flex-direction: column;
             justify-content: flex-end;
             width: 100%;
@@ -34,7 +38,7 @@ const MenuPanels = styled.div(() => {
             left: 0 !important;
         }
 
-        @media (min-width: 900px) {
+        @media ${desktopBreakpoint.media} {
             flex-direction: row;
             align-items: flex-start;
             max-height: 100%;
@@ -85,7 +89,7 @@ const Menu = styled.div
             }
         }
 
-        @media (max-width: 899px) {
+        @media ${mobileBreakpoint.media} {
             background: transparent;
 
             will-change: visibility, background;
@@ -113,7 +117,7 @@ const Menu = styled.div
             }
         }
 
-        @media (min-width: 900px) {
+        @media ${desktopBreakpoint.media} {
             ${MenuPanels} {
                 opacity: 0;
                 visibility: hidden;
@@ -142,6 +146,8 @@ const Menu = styled.div
 const MenuComponent: React.FC<Props> = (props) => {
     const {children, open = false, onClose} = props;
 
+    const [isMobile, setIsMobile] = useState(mobileBreakpoint.matches);
+
     // state to manage primary menu rendering/visibility
     const [containerShouldRender, setContainerShouldRender] = useState(false);
     const [menuIsOpen, setMenuIsOpen] = useState(false);
@@ -157,6 +163,22 @@ const MenuComponent: React.FC<Props> = (props) => {
 
     // current menu panel stack
     const [menuPanelStack, setMenuPanelStack] = useState<React.ReactNode[]>([]);
+
+    // register media query listener
+    useEffect(() => {
+        if (mobileBreakpoint.addEventListener) {
+            mobileBreakpoint.addEventListener('change', handleMobileBreakpointChangeEvent);
+        } else if (mobileBreakpoint.addListener) {
+            mobileBreakpoint.addListener(handleMobileBreakpointChangeEvent);
+        }
+        return () => {
+            if (mobileBreakpoint.removeEventListener) {
+                mobileBreakpoint.removeEventListener('change', handleMobileBreakpointChangeEvent);
+            } else if (mobileBreakpoint.removeListener) {
+                mobileBreakpoint.removeListener(handleMobileBreakpointChangeEvent);
+            }
+        };
+    }, []);
 
     // update menu open/close rendering state
     useEffect(() => {
@@ -256,6 +278,10 @@ const MenuComponent: React.FC<Props> = (props) => {
         });
     }
 
+    function handleMobileBreakpointChangeEvent(event: MediaQueryListEvent) {
+        setIsMobile(event.matches === true);
+    }
+
     // event handlers
 
     const handleOnClickEvent = (event: MouseEvent<HTMLDivElement>) => {
@@ -311,6 +337,7 @@ const MenuComponent: React.FC<Props> = (props) => {
         closeMenuPanel,
         menuPanelInitialized,
         menuPanelClosed,
+        isMobile,
     };
 
     return true ? (

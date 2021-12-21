@@ -70,15 +70,15 @@ export type Props = {
 const MenuHeaderComponent: React.FC<Props> = (props) => {
     const {children, enableBackButton = false} = props;
 
-    const menuContext = useContext(MenuContext);
-    const parentMenuPanelContext = useContext(MenuPanelContext);
+    const {closeMenuPanel} = useContext(MenuContext);
+    const {menuPanelID: parentMenuPanelID} = useContext(MenuPanelContext);
 
     const handleClickEvent = (event: React.MouseEvent<HTMLElement>) => {
-        if (!menuContext || !parentMenuPanelContext) {
+        if (!closeMenuPanel || !parentMenuPanelID) {
             return;
         }
         event.stopPropagation();
-        menuContext.closeMenuPanel(parentMenuPanelContext.menuPanelID);
+        closeMenuPanel(parentMenuPanelID);
     };
 
     return (
